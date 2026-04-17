@@ -3,18 +3,13 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Chip } from "@/components/ui/chip";
 import { DecisionCard } from "@/components/case/decision-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhotoUploader } from "@/components/case/photo-uploader";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { VariableFieldRenderer } from "@/components/case/variable-field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   GENDER_LABELS,
   type PatientGender,
@@ -32,15 +27,17 @@ interface Props {
   fields: VariableField[];
   decisions: DecisionOption[];
   reasons: ReasonOption[];
+  userId: string;
 }
 
-export function NewCaseForm({ fields, decisions, reasons }: Props) {
+export function NewCaseForm({ fields, decisions, reasons, userId }: Props) {
   const [age, setAge] = useState<string>("");
   const [gender, setGender] = useState<PatientGender | "">("");
   const [vars, setVars] = useState<Record<string, FieldValue>>({});
   const [decisionId, setDecisionId] = useState<string>("");
   const [otherText, setOtherText] = useState<string>("");
   const [reasonIds, setReasonIds] = useState<string[]>([]);
+  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -87,6 +84,7 @@ export function NewCaseForm({ fields, decisions, reasons }: Props) {
         decisionId,
         otherText: decisionId === "other" ? otherText.trim() : undefined,
         reasonIds,
+        photoPaths,
       });
       if (!res.ok) setError(res.error);
     });
@@ -114,22 +112,25 @@ export function NewCaseForm({ fields, decisions, reasons }: Props) {
           </div>
           <div className="flex flex-col gap-2">
             <Label>Gender</Label>
-            <Select
-              value={gender}
-              onValueChange={(v) => setGender(v as PatientGender)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose one" />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(GENDER_LABELS) as PatientGender[]).map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {GENDER_LABELS[g]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(GENDER_LABELS) as PatientGender[]).map((g) => (
+                <Chip
+                  key={g}
+                  selected={gender === g}
+                  onClick={() => setGender(gender === g ? "" : g)}
+                >
+                  {GENDER_LABELS[g]}
+                </Chip>
+              ))}
+            </div>
           </div>
+        </div>
+      </section>
+
+      <section>
+        <SectionHeading title="Photos (optional)" size="sm" />
+        <div className="rounded-lg bg-surface p-5 shadow-card">
+          <PhotoUploader onChange={setPhotoPaths} userId={userId} />
         </div>
       </section>
 

@@ -1,16 +1,9 @@
 "use client";
 
 import type { VariableField } from "@/lib/schemas/variable-field";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type FieldValue = string | number | string[] | undefined;
 
@@ -42,42 +35,38 @@ export function VariableFieldRenderer({
       </div>
 
       {field.type === "select" && (
-        <Select
-          value={typeof value === "string" ? value : ""}
-          onValueChange={(v) => onChange(v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose one" />
-          </SelectTrigger>
-          <SelectContent>
-            {field.options.map((opt) => (
-              <SelectItem key={opt.id} value={opt.id}>
+        <div className="flex flex-wrap gap-2">
+          {field.options.map((opt) => {
+            const selected = value === opt.id;
+            return (
+              <Chip
+                key={opt.id}
+                selected={selected}
+                onClick={() => onChange(selected ? undefined : opt.id)}
+              >
                 {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              </Chip>
+            );
+          })}
+        </div>
       )}
 
       {field.type === "multi_select" && (
-        <div className="flex flex-col gap-1 rounded-lg bg-surface p-1 shadow-card">
+        <div className="flex flex-wrap gap-2">
           {field.options.map((opt) => {
             const arr = Array.isArray(value) ? value : [];
-            const checked = arr.includes(opt.id);
+            const selected = arr.includes(opt.id);
             return (
-              <label
+              <Chip
                 key={opt.id}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-chip-bg"
+                selected={selected}
+                onClick={() => {
+                  if (selected) onChange(arr.filter((id) => id !== opt.id));
+                  else onChange([...arr, opt.id]);
+                }}
               >
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={(next) => {
-                    if (next) onChange([...arr, opt.id]);
-                    else onChange(arr.filter((id) => id !== opt.id));
-                  }}
-                />
-                <span className="text-[15px]">{opt.label}</span>
-              </label>
+                {opt.label}
+              </Chip>
             );
           })}
         </div>

@@ -16,6 +16,12 @@ export const profileUpdateSchema = z.object({
     .max(60)
     .nullish(),
   practice_setting: practiceSettingSchema.nullish(),
+  institution: z
+    .string()
+    .trim()
+    .max(120)
+    .nullish()
+    .transform((v) => (v === "" ? null : v)),
   is_anonymous_public: z.boolean().optional(),
 });
 export type ProfileUpdate = z.infer<typeof profileUpdateSchema>;

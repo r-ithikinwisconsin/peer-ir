@@ -87,6 +87,7 @@ export default async function ProfilePage() {
   const settingLabel = profile?.practice_setting
     ? PRACTICE_SETTING_LABELS[profile.practice_setting as PracticeSetting]
     : null;
+  const institution = profile?.institution ?? null;
   const subtitle = [roleLabel, settingLabel].filter(Boolean).join(" · ");
 
   const recent = (rawCases ?? []) as unknown as RecentCase[];
@@ -101,6 +102,9 @@ export default async function ProfilePage() {
               {profile?.display_name ?? "Anonymous"}
             </p>
             <p className="text-sm text-text-muted">{subtitle}</p>
+            {institution && (
+              <p className="text-sm text-text-muted">{institution}</p>
+            )}
           </div>
         </div>
         <Link

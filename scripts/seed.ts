@@ -21,6 +21,103 @@ interface SyntheticProfile {
   role: Role;
   years: number | null;
   setting: Setting;
+  displayName: string;
+  institution: string;
+}
+
+const ACADEMIC_INSTITUTIONS = [
+  "Johns Hopkins Hospital",
+  "Massachusetts General Hospital",
+  "Cleveland Clinic",
+  "UCSF Medical Center",
+  "Mayo Clinic",
+  "NYU Langone",
+  "Mount Sinai Hospital",
+  "Stanford Health Care",
+  "Duke University Hospital",
+  "Penn Medicine",
+  "UCLA Medical Center",
+  "Northwestern Memorial Hospital",
+  "University of Michigan Hospital",
+  "Brigham and Women's Hospital",
+  "Yale New Haven Hospital",
+];
+const COMMUNITY_INSTITUTIONS = [
+  "Providence Regional Medical Center",
+  "Baptist Health",
+  "Mercy Medical Center",
+  "Sutter Health",
+  "Kaiser Permanente",
+  "Memorial Hermann",
+  "Intermountain Medical Center",
+  "Advocate Lutheran General",
+  "HCA Florida Hospital",
+  "Scripps Memorial",
+];
+const PRIVATE_INSTITUTIONS = [
+  "Radiology Associates",
+  "Vascular & Interventional Partners",
+  "Midwest Interventional Group",
+  "Peninsula Vascular Associates",
+  "Southwest IR Specialists",
+];
+
+const FIRST_NAMES = [
+  "Aarav", "Aisha", "Alejandro", "Amara", "Amir", "Ana", "Anika", "Anton",
+  "Ari", "Arjun", "Aster", "Audrey", "Bao", "Benjamin", "Bianca", "Caleb",
+  "Camila", "Cara", "Chinwe", "Clara", "Dalia", "Damian", "Daniela", "David",
+  "Devika", "Diana", "Dmitri", "Eli", "Elena", "Emeka", "Emi", "Emma",
+  "Esi", "Ethan", "Fatima", "Felix", "Gabriel", "Giulia", "Grace", "Hana",
+  "Hannah", "Haruki", "Henry", "Ibrahim", "Ines", "Irene", "Isaac", "Isabella",
+  "Jae", "James", "Jasmine", "Javier", "Jin", "Jonas", "Julia", "Julian",
+  "Kai", "Kamala", "Karim", "Katya", "Kenji", "Khalid", "Kiran", "Kofi",
+  "Lara", "Laila", "Leo", "Lior", "Lila", "Liam", "Lucia", "Luca",
+  "Mae", "Malia", "Marcelo", "Maria", "Mateo", "Maya", "Mei", "Mia",
+  "Miko", "Mira", "Nadia", "Nikhil", "Nina", "Noa", "Nora", "Olamide",
+  "Olga", "Omar", "Oscar", "Pavel", "Petra", "Priya", "Quentin", "Rafael",
+  "Raisa", "Raj", "Rania", "Rasmus", "Reza", "Rhea", "Ria", "Rohan",
+  "Rosa", "Ruth", "Ryo", "Sadia", "Salim", "Samira", "Sanjay", "Sara",
+  "Sebastian", "Shani", "Simon", "Siri", "Sofia", "Soren", "Tara", "Theo",
+  "Thomas", "Timo", "Uma", "Valentina", "Vera", "Vikram", "Viv", "Wei",
+  "Wen", "Xiomara", "Yara", "Yasmin", "Yohan", "Yuki", "Yusuf", "Zainab",
+  "Zane", "Zara", "Zelda", "Zoe",
+];
+
+const LAST_NAMES = [
+  "Abrahams", "Adeyemi", "Ahmad", "Alvarez", "Andersen", "Arslan", "Asante",
+  "Azuma", "Bakshi", "Banerjee", "Barros", "Behrens", "Berger", "Bhatt",
+  "Bianchi", "Brennan", "Cabrera", "Calder", "Cardoso", "Castillo", "Chaudhry",
+  "Chen", "Cho", "Choi", "Colombo", "Cortez", "Cruz", "Dalal", "Dasgupta",
+  "Davidescu", "De Leon", "Diallo", "Dimov", "Dubois", "Duong", "Eberhardt",
+  "El-Sayed", "Engström", "Esposito", "Farooqi", "Fernandes", "Fischer",
+  "Fujimoto", "Galván", "Garcia", "Ghosh", "Goldberg", "Goncalves", "Govender",
+  "Grewal", "Gupta", "Haddad", "Hakim", "Halvorsen", "Hamdi", "Hansen",
+  "Hashimoto", "Hassan", "Hayashi", "Herrera", "Hidalgo", "Hossain", "Hussein",
+  "Iqbal", "Ito", "Jacobs", "Jansen", "Jimenez", "Johansson", "Joshi", "Kahn",
+  "Kang", "Kapoor", "Karimov", "Katz", "Kaur", "Khan", "Khoury", "Kim",
+  "Kiselyov", "Kobayashi", "Kolawole", "Kowalski", "Krasniqi", "Krishnan",
+  "Kumar", "Lam", "Lang", "Larsson", "Laurent", "Lee", "Levi", "Li",
+  "Lima", "Lin", "Lindgren", "Lopez", "Madani", "Maeda", "Magalhaes", "Malhotra",
+  "Marino", "Martin", "Masih", "Matsumoto", "Mbeki", "Mehta", "Mensah",
+  "Minh", "Mirza", "Mishra", "Moreau", "Moreno", "Mori", "Müller", "Nair",
+  "Nakamura", "Nakashima", "Nasser", "Navarro", "Ndlovu", "Nguyen", "Nikolaev",
+  "Novak", "Obi", "Odair", "Okafor", "Okonkwo", "Olsen", "Omari", "Ortega",
+  "Osei", "Ozaki", "Paik", "Pak", "Park", "Pereira", "Petrova", "Pham",
+  "Phan", "Popescu", "Prasad", "Qureshi", "Ramirez", "Rao", "Rashid", "Ravani",
+  "Reyes", "Rivera", "Rizzo", "Romano", "Romero", "Rossi", "Rouse", "Sabir",
+  "Saito", "Salim", "Sanchez", "Santana", "Santos", "Sarkar", "Sato", "Schmidt",
+  "Schneider", "Sharma", "Shen", "Silva", "Silva", "Singh", "Sokolov", "Song",
+  "Soriano", "Sousa", "Srinivasan", "Suzuki", "Tadesse", "Tahir", "Tan",
+  "Tanaka", "Tashkent", "Thakur", "Torres", "Tran", "Tsao", "Uchida", "Umar",
+  "Vargas", "Vasquez", "Vega", "Verma", "Vidal", "Vu", "Wang", "Watanabe",
+  "Weiss", "Wu", "Xu", "Yamada", "Yamamoto", "Yang", "Yoon", "Yusupov",
+  "Zelaya", "Zhang", "Zhao", "Zhou", "Zia",
+];
+
+function pickName(rand: () => number, index: number): string {
+  const f = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)];
+  const l = LAST_NAMES[(index + Math.floor(rand() * LAST_NAMES.length)) % LAST_NAMES.length];
+  return `Dr. ${f} ${l}`;
 }
 
 function env(name: string): string {
@@ -92,7 +189,29 @@ function generateProfile(rand: () => number, index: number) {
     ["hybrid", 0.03],
     ["other", 0.02],
   ]);
-  return { role, years, setting, email: `seed-${index}@${SYNTHETIC_EMAIL_DOMAIN}` };
+  const displayName = pickName(rand, index);
+  const institution = pickInstitution(rand, setting);
+  return {
+    role,
+    years,
+    setting,
+    displayName,
+    institution,
+    email: `seed-${index}@${SYNTHETIC_EMAIL_DOMAIN}`,
+  };
+}
+
+function pickInstitution(rand: () => number, setting: Setting): string {
+  if (setting === "academic") return choice(rand, ACADEMIC_INSTITUTIONS);
+  if (setting === "community") return choice(rand, COMMUNITY_INSTITUTIONS);
+  if (setting === "private_practice") return choice(rand, PRIVATE_INSTITUTIONS);
+  if (setting === "hybrid")
+    return choice(rand, [...ACADEMIC_INSTITUTIONS, ...COMMUNITY_INSTITUTIONS]);
+  return choice(rand, [
+    ...ACADEMIC_INSTITUTIONS,
+    ...COMMUNITY_INSTITUTIONS,
+    ...PRIVATE_INSTITUTIONS,
+  ]);
 }
 
 function pickCaseVariables(
@@ -304,6 +423,8 @@ async function main() {
       role: spec.role,
       years: spec.years,
       setting: spec.setting,
+      displayName: spec.displayName,
+      institution: spec.institution,
     });
 
     await admin
@@ -312,6 +433,8 @@ async function main() {
         role: spec.role,
         years_out_of_training: spec.years,
         practice_setting: spec.setting,
+        display_name: spec.displayName,
+        institution: spec.institution,
         disclaimer_acked_at: new Date().toISOString(),
       })
       .eq("id", created.user.id);

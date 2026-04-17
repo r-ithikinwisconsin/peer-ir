@@ -93,6 +93,12 @@ export function buildCaseVariablesSchema(fields: VariableField[]) {
   });
 }
 
+export const photoPathSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[a-f0-9-]+\/[a-f0-9-]+\/\d+\.(jpg|jpeg|png|webp|heic)$/i, "Invalid photo path");
+
 export const caseSubmitSchema = z.object({
   age: z.number().int().min(0).max(120),
   gender: patientGenderSchema,
@@ -100,5 +106,6 @@ export const caseSubmitSchema = z.object({
   decisionId: z.string().regex(/^[a-z0-9_-]+$/).min(1).max(64),
   otherText: z.string().trim().max(240).optional(),
   reasonIds: z.array(z.string().regex(/^[a-z0-9_-]+$/)).max(20).default([]),
+  photoPaths: z.array(photoPathSchema).max(5).default([]),
 });
 export type CaseSubmit = z.infer<typeof caseSubmitSchema>;

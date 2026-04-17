@@ -79,6 +79,32 @@ services:
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: 3600
 
+  storage:
+    image: supabase/storage-api:v1.10.1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    env_file: ./docker/.env
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGOPTIONS: "-c search_path=storage,public"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: local
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+
   migrator:
     image: postgres:15-alpine
     depends_on:
@@ -86,12 +112,15 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      storage:
+        condition: service_started
     env_file: ./docker/.env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./supabase/migrations:/migrations:ro
       - ./docker/migrator/entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/migrator/storage-init.sql:/storage-init.sql:ro
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     restart: "no"
 
@@ -181,4 +210,5 @@ services:
 
 volumes:
   db-data:
+  storage-data:
   seed-node-modules:

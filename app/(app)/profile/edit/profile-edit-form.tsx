@@ -28,6 +28,7 @@ interface Initial {
   role: UserRole | null;
   years_out_of_training: number | null;
   practice_setting: PracticeSetting | null;
+  institution: string;
 }
 
 export function ProfileEditForm({ initial }: { initial: Initial }) {
@@ -40,6 +41,7 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
   const [setting, setSetting] = useState<PracticeSetting | "">(
     initial.practice_setting ?? "",
   );
+  const [institution, setInstitution] = useState(initial.institution ?? "");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -60,6 +62,7 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
       role: role || null,
       years_out_of_training: years ? Number(years) : null,
       practice_setting: setting || null,
+      institution: institution.trim() || null,
     };
     const { error } = await supabase
       .from("profiles")
@@ -133,6 +136,16 @@ export function ProfileEditForm({ initial }: { initial: Initial }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label htmlFor="institution">Institution</Label>
+          <Input
+            id="institution"
+            value={institution}
+            onChange={(e) => setInstitution(e.target.value)}
+            placeholder="e.g. Johns Hopkins Hospital"
+            maxLength={120}
+          />
         </div>
       </div>
       {err && <p className="text-sm text-[#b91c1c]">{err}</p>}

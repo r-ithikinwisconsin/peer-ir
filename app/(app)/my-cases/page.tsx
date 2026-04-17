@@ -4,6 +4,7 @@ import { CaseCard } from "@/components/case/case-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/server";
+import { buildCasePhotoUrl } from "@/lib/case/photos";
 import { renderCaseVariablesTeaser } from "@/lib/case/teaser";
 import {
   CATEGORY_LABELS,
@@ -37,6 +38,7 @@ type MyCaseRow = {
   patient_age: number;
   patient_gender: PatientGender;
   case_variables: Json;
+  photo_paths: string[] | null;
   created_at: string;
   case_templates: {
     title: string;
@@ -55,7 +57,7 @@ export default async function MyCasesPage() {
   const { data: rawCases } = await supabase
     .from("cases")
     .select(
-      "id, case_number, patient_age, patient_gender, case_variables, created_at, case_templates(title, category, clinical_vignette_structured)",
+      "id, case_number, patient_age, patient_gender, case_variables, photo_paths, created_at, case_templates(title, category, clinical_vignette_structured)",
     )
     .eq("submitter_id", user.id)
     .order("created_at", { ascending: false });
@@ -95,6 +97,7 @@ export default async function MyCasesPage() {
               variableFieldSchema,
             );
             const values = (c.case_variables ?? {}) as Record<string, unknown>;
+            const photos = c.photo_paths ?? [];
             return (
               <CaseCard
                 key={c.id}
@@ -103,6 +106,8 @@ export default async function MyCasesPage() {
                 gender={c.patient_gender}
                 category={CATEGORY_LABELS[template.category]}
                 teaser={renderCaseVariablesTeaser(fields, values)}
+                thumbnailUrl={photos[0] ? buildCasePhotoUrl(photos[0]) : undefined}
+                photoCount={photos.length}
                 isOwn
               />
             );

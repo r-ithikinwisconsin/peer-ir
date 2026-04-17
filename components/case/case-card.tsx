@@ -10,6 +10,8 @@ export interface CaseCardProps {
   gender: PatientGender;
   category: string;
   teaser?: string;
+  thumbnailUrl?: string;
+  photoCount?: number;
   isOwn?: boolean;
   hasVoted?: boolean;
   className?: string;
@@ -21,6 +23,8 @@ export function CaseCard({
   gender,
   category,
   teaser,
+  thumbnailUrl,
+  photoCount,
   isOwn,
   hasVoted,
   className,
@@ -33,6 +37,21 @@ export function CaseCard({
         className,
       )}
     >
+      {thumbnailUrl && (
+        <div className="relative h-16 w-16 flex-none overflow-hidden rounded-md bg-chip-bg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          {photoCount && photoCount > 1 && (
+            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] font-semibold text-white">
+              {photoCount}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center gap-2">
           <CategoryPill>{category}</CategoryPill>

@@ -4,6 +4,7 @@ import { CaseCard } from "@/components/case/case-card";
 import { FeedFilterPanel } from "@/components/case/feed-filter-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/server";
+import { buildCasePhotoUrl } from "@/lib/case/photos";
 import { renderCaseVariablesTeaser } from "@/lib/case/teaser";
 import {
   CATEGORY_LABELS,
@@ -105,6 +106,7 @@ export default async function FeedPage({
     patient_age: number;
     patient_gender: PatientGender;
     case_variables: Json;
+    photo_paths: string[] | null;
     created_at: string;
     profiles: { practice_setting: PracticeSetting | null } | null;
   };
@@ -112,7 +114,7 @@ export default async function FeedPage({
   let query = supabase
     .from("cases")
     .select(
-      "id, case_number, submitter_id, patient_age, patient_gender, case_variables, created_at, profiles!cases_submitter_id_fkey(practice_setting)",
+      "id, case_number, submitter_id, patient_age, patient_gender, case_variables, photo_paths, created_at, profiles!cases_submitter_id_fkey(practice_setting)",
     )
     .eq("case_template_id", template.id)
     .order("created_at", { ascending: false })
@@ -184,6 +186,7 @@ export default async function FeedPage({
         <div className="flex flex-col gap-3">
           {filteredCases.map((c) => {
             const values = (c.case_variables ?? {}) as Record<string, unknown>;
+            const photos = c.photo_paths ?? [];
             return (
               <CaseCard
                 key={c.id}
@@ -192,6 +195,8 @@ export default async function FeedPage({
                 gender={c.patient_gender}
                 category={categoryLabel}
                 teaser={renderCaseVariablesTeaser(fields, values)}
+                thumbnailUrl={photos[0] ? buildCasePhotoUrl(photos[0]) : undefined}
+                photoCount={photos.length}
                 isOwn={c.submitter_id === user.id}
                 hasVoted={votedCaseIds.has(c.id)}
               />

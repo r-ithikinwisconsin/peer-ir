@@ -37,6 +37,7 @@ export default async function ProfileEditPage() {
           role: profile?.role ?? null,
           years_out_of_training: profile?.years_out_of_training ?? null,
           practice_setting: profile?.practice_setting ?? null,
+          institution: profile?.institution ?? "",
         }}
       />
     </main>

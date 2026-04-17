@@ -28,6 +28,11 @@ function parseArray<T>(
 
 export default async function NewCasePage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) notFound();
+
   const { data: template } = await supabase
     .from("case_templates")
     .select("clinical_vignette_structured, decision_options, reason_options")
@@ -63,6 +68,7 @@ export default async function NewCasePage() {
         fields={fields}
         decisions={decisions}
         reasons={reasons}
+        userId={user.id}
       />
     </main>
   );

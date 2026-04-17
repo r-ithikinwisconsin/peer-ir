@@ -10,7 +10,7 @@ function initials(name: string): string {
   const parts = name
     .trim()
     .split(/\s+/)
-    .filter(Boolean)
+    .filter((p) => p && !/^(dr|mr|mrs|ms|prof)\.?$/i.test(p))
     .slice(0, 2);
   return parts.map((p) => p[0]!.toUpperCase()).join("");
 }

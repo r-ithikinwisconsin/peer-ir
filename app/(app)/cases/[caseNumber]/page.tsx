@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { CategoryPill } from "@/components/ui/category-pill";
+import { PhotoCarousel } from "@/components/case/photo-carousel";
 import { PollView } from "@/components/case/poll-view";
 import { VignettePanel } from "@/components/case/vignette-panel";
+import { buildCasePhotoUrl } from "@/lib/case/photos";
 import { createClient } from "@/lib/supabase/server";
 import { voteAggregateSchema } from "@/lib/schemas/case-vote";
 import {
@@ -55,7 +57,7 @@ export default async function CaseDetailPage({
   const { data: caseRow } = await supabase
     .from("cases")
     .select(
-      "id, case_number, submitter_id, patient_age, patient_gender, case_variables, submitter_decision_id, submitter_other_text, submitter_reason_ids, created_at, case_templates(title, category, clinical_vignette_structured, decision_options, reason_options)",
+      "id, case_number, submitter_id, patient_age, patient_gender, case_variables, submitter_decision_id, submitter_other_text, submitter_reason_ids, photo_paths, created_at, case_templates(title, category, clinical_vignette_structured, decision_options, reason_options)",
     )
     .eq("case_number", caseNumber)
     .maybeSingle();
@@ -88,7 +90,7 @@ export default async function CaseDetailPage({
 
   const { data: aggregateJson } = await supabase.rpc(
     "get_case_vote_aggregate",
-    { p_case_id: caseRow.id },
+    { p_case_id: caseRow.id, p_filters: {} },
   );
   const aggregate = voteAggregateSchema.parse(aggregateJson);
 
@@ -104,6 +106,9 @@ export default async function CaseDetailPage({
   const submitterReasonLabels = (caseRow.submitter_reason_ids ?? [])
     .map((id) => reasons.find((r) => r.id === id)?.label)
     .filter((l): l is string => Boolean(l));
+
+  const photoUrls = (caseRow.photo_paths ?? []).map(buildCasePhotoUrl);
+  const hasPhotos = photoUrls.length > 0;
 
   return (
     <main className="px-5 py-6">
@@ -129,35 +134,58 @@ export default async function CaseDetailPage({
         </p>
       </header>
 
-      <section className="mb-6">
-        <VignettePanel fields={fields} values={caseRow.case_variables as Record<string, unknown>} />
-      </section>
+      <div
+        className={
+          hasPhotos
+            ? "grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+            : "flex flex-col gap-6"
+        }
+      >
+        {hasPhotos && (
+          <div className="md:sticky md:top-6 md:self-start">
+            <PhotoCarousel urls={photoUrls} />
+          </div>
+        )}
 
-      {isSubmitter && (
-        <section className="mb-6 rounded-lg bg-chip-bg p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Your decision
-          </p>
-          <p className="mt-1 text-[15px] font-semibold">
-            {submitterDecisionLabel}
-          </p>
-          {submitterReasonLabels.length > 0 && (
-            <p className="mt-1 text-sm text-text-muted">
-              {submitterReasonLabels.join(" · ")}
-            </p>
+        <div className="flex min-w-0 flex-col gap-6">
+          <section>
+            <VignettePanel
+              fields={fields}
+              values={caseRow.case_variables as Record<string, unknown>}
+            />
+          </section>
+
+          {isSubmitter && (
+            <section className="rounded-lg bg-chip-bg p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Your decision
+              </p>
+              <p className="mt-1 text-[15px] font-semibold">
+                {submitterDecisionLabel}
+              </p>
+              {submitterReasonLabels.length > 0 && (
+                <p className="mt-1 text-sm text-text-muted">
+                  {submitterReasonLabels.join(" · ")}
+                </p>
+              )}
+            </section>
           )}
-        </section>
-      )}
 
-      {hasVoted ? (
-        <PollView decisions={decisions} aggregate={aggregate} />
-      ) : (
-        <VoteForm
-          caseId={caseRow.id}
-          caseNumber={caseRow.case_number}
-          decisions={decisions}
-        />
-      )}
+          {hasVoted ? (
+            <PollView
+              caseId={caseRow.id}
+              decisions={decisions}
+              initialAggregate={aggregate}
+            />
+          ) : (
+            <VoteForm
+              caseId={caseRow.id}
+              caseNumber={caseRow.case_number}
+              decisions={decisions}
+            />
+          )}
+        </div>
+      </div>
     </main>
   );
 }

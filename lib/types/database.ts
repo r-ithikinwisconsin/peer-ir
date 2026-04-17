@@ -15,6 +15,7 @@ export type Database = {
           disclaimer_acked_at: string | null;
           display_name: string | null;
           id: string;
+          institution: string | null;
           is_admin: boolean;
           is_anonymous_public: boolean;
           practice_setting: Database["public"]["Enums"]["practice_setting"] | null;
@@ -27,6 +28,7 @@ export type Database = {
           disclaimer_acked_at?: string | null;
           display_name?: string | null;
           id: string;
+          institution?: string | null;
           is_admin?: boolean;
           is_anonymous_public?: boolean;
           practice_setting?:
@@ -41,6 +43,7 @@ export type Database = {
           disclaimer_acked_at?: string | null;
           display_name?: string | null;
           id?: string;
+          institution?: string | null;
           is_admin?: boolean;
           is_anonymous_public?: boolean;
           practice_setting?:
@@ -103,6 +106,7 @@ export type Database = {
           submitter_decision_id: string;
           submitter_other_text: string | null;
           submitter_reason_ids: string[];
+          photo_paths: string[];
           created_at: string;
           updated_at: string;
         };
@@ -117,6 +121,7 @@ export type Database = {
           submitter_decision_id: string;
           submitter_other_text?: string | null;
           submitter_reason_ids?: string[];
+          photo_paths?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -131,6 +136,7 @@ export type Database = {
           submitter_decision_id?: string;
           submitter_other_text?: string | null;
           submitter_reason_ids?: string[];
+          photo_paths?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -208,11 +214,12 @@ export type Database = {
           p_decision_id: string;
           p_other_text?: string | null;
           p_reason_ids?: string[];
+          p_photo_paths?: string[];
         };
         Returns: Json;
       };
       get_case_vote_aggregate: {
-        Args: { p_case_id: string };
+        Args: { p_case_id: string; p_filters?: Json };
         Returns: Json;
       };
     };

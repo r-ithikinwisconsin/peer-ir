@@ -35,4 +35,19 @@ for f in $(ls /migrations/*.sql | sort); do
   psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version')"
 done
 
+if [ -f /storage-init.sql ]; then
+  echo "migrator: waiting for storage-api to finish its schema migrations…"
+  i=0
+  until psql "$DB_URL" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='storage' AND table_name='buckets' AND column_name='public'" 2>/dev/null | grep -q '^1$'; do
+    i=$((i + 1))
+    if [ "$i" -gt 120 ]; then
+      echo "migrator: storage.buckets.public never appeared — giving up"
+      exit 1
+    fi
+    sleep 1
+  done
+  echo "migrator: applying storage-init.sql"
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -f /storage-init.sql
+fi
+
 echo "migrator: done."

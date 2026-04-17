@@ -39,6 +39,7 @@ export async function createCase(input: {
   decisionId: string;
   otherText?: string;
   reasonIds: string[];
+  photoPaths?: string[];
 }): Promise<CreateCaseResult> {
   const supabase = await createClient();
   const {
@@ -93,6 +94,10 @@ export async function createCase(input: {
     return { ok: false, error: "Invalid reason" };
   }
 
+  const photoPaths = (input.photoPaths ?? []).filter(
+    (p) => p.split("/")[0] === user.id,
+  );
+
   const parsed = caseSubmitSchema.safeParse({
     age: input.age,
     gender: input.gender,
@@ -100,6 +105,7 @@ export async function createCase(input: {
     decisionId: input.decisionId,
     otherText: input.otherText?.trim() || undefined,
     reasonIds: input.reasonIds,
+    photoPaths,
   });
   if (!parsed.success) return { ok: false, error: "Invalid payload" };
 
@@ -110,6 +116,7 @@ export async function createCase(input: {
     p_decision_id: parsed.data.decisionId,
     p_other_text: parsed.data.otherText ?? null,
     p_reason_ids: parsed.data.reasonIds,
+    p_photo_paths: parsed.data.photoPaths,
   });
 
   if (error) return { ok: false, error: error.message };
