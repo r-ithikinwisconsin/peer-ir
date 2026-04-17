@@ -1,0 +1,16 @@
+node_modules
+.next
+.claude
+.vercel
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+next-env.d.ts
+playwright-report
+test-results
+coverage
+.DS_Store
+supabase/.branches
+supabase/.temp
+.gstack/

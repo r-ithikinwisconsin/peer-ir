@@ -1,0 +1,184 @@
+name: deciq
+
+services:
+  db:
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    env_file: ./docker/.env
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: 3600
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/volumes/db/migrations/zzz_set_role_passwords.sql:/docker-entrypoint-initdb.d/migrations/zzz_set_role_passwords.sql:ro
+    ports:
+      - "54422:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    image: supabase/gotrue:v2.177.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ./docker/.env
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${SUPABASE_PUBLIC_URL}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${SITE_URL},${SITE_URL}/auth/callback
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: inbucket
+      GOTRUE_SMTP_PORT: 2500
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@deciq.local
+      GOTRUE_SMTP_SENDER_NAME: DecIQ
+      # Absolute URLs: GoTrue resolves these directly into the email link
+      # (url.ResolveReference), bypassing Kong and its /verify endpoint. The
+      # server-side /auth/callback route then calls supabase.auth.verifyOtp
+      # with the token_hash from the query string. This avoids the PKCE
+      # verifier-cookie plumbing entirely.
+      GOTRUE_MAILER_URLPATHS_INVITE: ${SITE_URL}/auth/callback
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${SITE_URL}/auth/callback
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${SITE_URL}/auth/callback
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${SITE_URL}/auth/callback
+      # Local dev: disable the 60s "same-user" throttle and bump the hourly cap.
+      GOTRUE_SECURITY_MAX_FREQUENCY: 1s
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: "1000"
+
+  rest:
+    image: postgrest/postgrest:v12.2.12
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ./docker/.env
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+
+  migrator:
+    image: postgres:15-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    env_file: ./docker/.env
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./docker/migrator/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    restart: "no"
+
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+    env_file: ./docker/.env
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    volumes:
+      - ./docker/volumes/api/kong.yml:/home/kong/kong.yml:ro
+    ports:
+      - "8000:8000"
+
+  inbucket:
+    image: inbucket/inbucket:3.0.3
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # web UI — http://localhost:9000
+      - "2500:2500"   # SMTP (internal only; published for debugging)
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+    restart: unless-stopped
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kong:
+        condition: service_started
+    env_file: ./docker/.env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      TEST_LOGIN_SECRET: ${TEST_LOGIN_SECRET:-}
+      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+    ports:
+      - "3000:3000"
+
+  seed:
+    profiles: ["seed"]
+    image: node:20-alpine
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kong:
+        condition: service_started
+    env_file: ./docker/.env
+    environment:
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - seed-node-modules:/app/node_modules
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "npm ci --no-audit --no-fund && npx tsx scripts/seed.ts",
+      ]
+    restart: "no"
+
+volumes:
+  db-data:
+  seed-node-modules:

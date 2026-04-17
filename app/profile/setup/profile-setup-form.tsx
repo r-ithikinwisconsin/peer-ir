@@ -1,0 +1,224 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  PRACTICE_SETTING_LABELS,
+  ROLE_LABELS,
+  type PracticeSetting,
+  type UserRole,
+} from "@/lib/schemas/enums";
+import { createClient } from "@/lib/supabase/browser";
+import type { TablesUpdate } from "@/lib/types/database";
+
+type ProfileUpdate = TablesUpdate<"profiles">;
+
+interface Initial {
+  display_name: string;
+  role: UserRole | null;
+  years_out_of_training: number | null;
+  practice_setting: PracticeSetting | null;
+  disclaimer_acked_at: string | null;
+}
+
+export function ProfileSetupForm({ initial }: { initial: Initial }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  const next = search.get("next") ?? "/feed";
+  const [disclaimerOpen, setDisclaimerOpen] = useState(
+    !initial.disclaimer_acked_at,
+  );
+  const [displayName, setDisplayName] = useState(initial.display_name ?? "");
+  const [role, setRole] = useState<UserRole | "">(initial.role ?? "");
+  const [years, setYears] = useState<string>(
+    initial.years_out_of_training?.toString() ?? "",
+  );
+  const [setting, setSetting] = useState<PracticeSetting | "">(
+    initial.practice_setting ?? "",
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function acknowledgeDisclaimer() {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase
+      .from("profiles")
+      .update({ disclaimer_acked_at: new Date().toISOString() })
+      .eq("id", user.id);
+    setDisclaimerOpen(false);
+  }
+
+  async function save(skipped: boolean) {
+    setSaving(true);
+    setErr(null);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setErr("Not signed in");
+      setSaving(false);
+      return;
+    }
+
+    const patch: ProfileUpdate = {
+      display_name: displayName.trim() || null,
+    };
+    if (!skipped) {
+      patch.role = role || null;
+      patch.years_out_of_training = years ? Number(years) : null;
+      patch.practice_setting = setting || null;
+    } else {
+      // Skipping still needs a role so the app layout lets them through;
+      // default to "other" so they can refine it later.
+      patch.role = role || "other";
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(patch)
+      .eq("id", user.id);
+    setSaving(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    router.replace(next as "/feed");
+    router.refresh();
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Dialog open={disclaimerOpen}>
+        <DialogContent hideClose>
+          <DialogHeader>
+            <DialogTitle>One thing first</DialogTitle>
+            <DialogDescription>
+              DecIQ is for educational purposes only. It is not clinical
+              advice. <strong>Do not enter any protected health information.</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <Button block onClick={acknowledgeDisclaimer}>
+            I understand
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <header className="flex flex-col gap-1">
+        <p className="label">SETUP</p>
+        <h1 className="text-3xl font-bold tracking-tight">Your profile</h1>
+        <p className="text-text-muted">
+          These fields are optional but they power the peer-filter controls.
+          They&apos;re visible to other users in aggregate only — never with
+          your name.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-4 rounded-lg bg-surface p-5 shadow-card">
+        <div>
+          <Label htmlFor="display-name">Display name</Label>
+          <Input
+            id="display-name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Dr. Smith"
+          />
+        </div>
+
+        <div>
+          <Label>Role</Label>
+          <Select
+            value={role}
+            onValueChange={(v) => setRole(v as UserRole)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a role" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(ROLE_LABELS) as UserRole[]).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {ROLE_LABELS[k]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="years">Years out of training</Label>
+          <Input
+            id="years"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={60}
+            placeholder="(attendings only)"
+            value={years}
+            onChange={(e) => setYears(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label>Practice setting</Label>
+          <Select
+            value={setting}
+            onValueChange={(v) => setSetting(v as PracticeSetting)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a setting" />
+            </SelectTrigger>
+            <SelectContent>
+              {(
+                Object.keys(PRACTICE_SETTING_LABELS) as PracticeSetting[]
+              ).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {PRACTICE_SETTING_LABELS[k]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {err && <p className="text-sm text-[#b91c1c]">{err}</p>}
+
+      <Button
+        block
+        size="lg"
+        disabled={saving}
+        onClick={() => save(false)}
+      >
+        {saving ? "Saving…" : "Save and continue"}
+      </Button>
+      <Button
+        block
+        variant="ghost"
+        disabled={saving}
+        onClick={() => save(true)}
+      >
+        Skip for now
+      </Button>
+    </div>
+  );
+}
